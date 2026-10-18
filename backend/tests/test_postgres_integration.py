@@ -8,6 +8,7 @@ from alembic import command
 from alembic.config import Config
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.engine import make_url
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 from fastapi.testclient import TestClient
 
@@ -199,8 +200,36 @@ def test_empty_postgres_migration_and_persistent_workflows(migrated_postgres_cli
         constraint["column_names"] == ["job_id", "job_seeker_id"]
         for constraint in unique_constraints
     )
-
     assert client.delete(
         f"/api/jobs/{job['id']}", headers=auth_headers(employer)
     ).status_code == 204
     assert client.get(f"/api/jobs/{job['id']}").status_code == 404
+
+
+def test_postgres_migration_rejects_invalid_application_status(
+    migrated_postgres_client,
+):
+    client, engine = migrated_postgres_client
+    employer = register(
+        client, email="postgres-status-owner@example.com", role="employer"
+    )
+    seeker = register(
+        client, email="postgres-status-applicant@example.com", role="job_seeker"
+    )
+    job = create_job(client, employer).json()
+
+    with pytest.raises(IntegrityError):
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "INSERT INTO applications "
+                    "(id, job_id, job_seeker_id, status) "
+                    "VALUES (:id, :job_id, :job_seeker_id, :status)"
+                ),
+                {
+                    "id": uuid.uuid4(),
+                    "job_id": uuid.UUID(job["id"]),
+                    "job_seeker_id": uuid.UUID(seeker["user"]["id"]),
+                    "status": "Interview",
+                },
+            )

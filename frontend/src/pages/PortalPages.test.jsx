@@ -191,6 +191,9 @@ describe('employer dashboard', () => {
     const userEventInstance = userEvent.setup()
     let persistedJobs = [{ ...jobs[1] }]
     jobApi.mine.mockImplementation(async () => ({ data: persistedJobs }))
+    applicationApi.forJob.mockImplementation(async (jobId) => ({
+      data: [{ ...applicant, id: `application-${jobId}`, jobId }],
+    }))
     jobApi.create.mockImplementation(async (payload) => {
       const created = { ...jobs[0], ...payload, id: 'job-created' }
       persistedJobs = [created, ...persistedJobs]
@@ -233,6 +236,22 @@ describe('employer dashboard', () => {
     await userEventInstance.click(screen.getByRole('button', { name: 'Delete Senior QA Engineer' }))
     expect(window.confirm).toHaveBeenCalled()
     await waitFor(() => expect(jobApi.remove).toHaveBeenCalledWith('job-created'))
+  })
+
+  it('renders applications from multiple jobs with unique application keys', async () => {
+    jobApi.mine.mockResolvedValue({ data: jobs })
+    applicationApi.forJob.mockImplementation(async (jobId) => ({
+      data: [{ ...applicant, id: `application-${jobId}`, jobId }],
+    }))
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    try {
+      renderPortal('/dashboard/employer')
+      expect(await screen.findAllByText(user.name)).toHaveLength(2)
+      expect(consoleError.mock.calls.flat().join(' ')).not.toContain('same key')
+    } finally {
+      consoleError.mockRestore()
+    }
   })
 
   it('updates application status via the API and reports the saved state', async () => {

@@ -78,7 +78,10 @@ def test_applicants_are_private_and_owned_employer_can_update_status(client: Tes
         headers=auth_headers(other_seeker),
     ).json()
 
-    mine = client.get("/api/applications/my", headers=auth_headers(seeker))
+    mine = client.get(
+        f"/api/applications/my?user_id={other_seeker['user']['id']}",
+        headers=auth_headers(seeker),
+    )
     assert mine.status_code == 200
     assert len(mine.json()) == 1
     assert mine.json()[0]["id"] == application["id"]
@@ -96,6 +99,9 @@ def test_applicants_are_private_and_owned_employer_can_update_status(client: Tes
     }
     assert client.get(
         f"/api/jobs/{job['id']}/applications", headers=auth_headers(other_employer)
+    ).status_code == 403
+    assert client.get(
+        f"/api/jobs/{other_job['id']}/applications", headers=auth_headers(employer)
     ).status_code == 403
     assert client.get(f"/api/jobs/{job['id']}/applications", headers=auth_headers(seeker)).status_code == 403
 
@@ -115,7 +121,17 @@ def test_applicants_are_private_and_owned_employer_can_update_status(client: Tes
     assert client.patch(
         f"/api/applications/{application['id']}/status",
         headers=auth_headers(other_employer),
-        json={"status": "Accepted"},
+        json={
+            "status": "Accepted",
+            "employer_id": other_employer["user"]["id"],
+            "user_id": other_employer["user"]["id"],
+            "role": "employer",
+        },
+    ).status_code == 403
+    assert client.patch(
+        f"/api/applications/{other_application['id']}/status",
+        headers=auth_headers(employer),
+        json={"status": "Rejected"},
     ).status_code == 403
     assert client.patch(
         f"/api/applications/{application['id']}/status",

@@ -81,7 +81,7 @@ def test_application_foreign_keys_uniqueness_and_deletion_cascade(client):
         ) == 0
 
 
-def test_database_rejects_invalid_roles_and_statuses(client):
+def test_database_rejects_invalid_roles_and_application_statuses(client):
     with SessionLocal() as db:
         db.add(
             User(
@@ -94,3 +94,21 @@ def test_database_rejects_invalid_roles_and_statuses(client):
         with pytest.raises(IntegrityError):
             db.commit()
         db.rollback()
+
+    employer = register(client, email="status-owner@example.com", role="employer")
+    seeker = register(client, email="status-applicant@example.com", role="job_seeker")
+    job = create_job(client, employer).json()
+    with SessionLocal() as db:
+        db.add(
+            Application(
+                job_id=UUID(job["id"]),
+                applicant_id=UUID(seeker["user"]["id"]),
+                status="Interview",
+            )
+        )
+        with pytest.raises(IntegrityError):
+            db.commit()
+        db.rollback()
+
+    with SessionLocal() as db:
+        assert db.scalar(select(func.count(Application.id))) == 0
