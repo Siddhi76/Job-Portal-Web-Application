@@ -30,6 +30,33 @@ describe('API service request contracts', () => {
     expect(resolveApiBaseUrl(undefined)).toBe('http://127.0.0.1:8000/api')
   })
 
+  it('builds the exact production jobs URL from the configured API base URL', async () => {
+    const originalBaseUrl = api.defaults.baseURL
+    const configuredBaseUrl = 'https://job-portal-web-application-4xeb.onrender.com/api'
+    api.defaults.baseURL = resolveApiBaseUrl(configuredBaseUrl)
+    let requestUrl
+    const restore = mockAdapter((config) => {
+      requestUrl = api.getUri(config)
+      return {}
+    })
+
+    try {
+      await jobApi.list({ pageSize: 100 })
+      expect(requestUrl).toBe(
+        'https://job-portal-web-application-4xeb.onrender.com/api/jobs?pageSize=100',
+      )
+    } finally {
+      restore()
+      api.defaults.baseURL = originalBaseUrl
+    }
+  })
+
+  it('rejects a copied Vercel UI label appended to the API base URL', () => {
+    expect(() => resolveApiBaseUrl(
+      'https://job-portal-web-application-4xeb.onrender.com/api  Copy variable and value',
+    )).toThrow(/must not contain whitespace/)
+  })
+
   it('sends auth payload, consumes token response, authenticates /me, and clears token on logout', async () => {
     const requests = []
     const restore = mockAdapter((config) => {

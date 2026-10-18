@@ -8,7 +8,10 @@ class Settings(BaseSettings):
     database_url: str
     secret_key: SecretStr
     access_token_expire_minutes: int = 60
-    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
+    cors_origins: str = (
+        "http://localhost:5173,http://127.0.0.1:5173,"
+        "https://job-portal-web-application-sigma.vercel.app"
+    )
     algorithm: str = "HS256"
 
     model_config = SettingsConfigDict(
@@ -19,7 +22,11 @@ class Settings(BaseSettings):
 
     @property
     def cors_origin_list(self) -> list[str]:
-        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+        return [
+            origin.strip().rstrip("/")
+            for origin in self.cors_origins.split(",")
+            if origin.strip()
+        ]
 
 
 @lru_cache

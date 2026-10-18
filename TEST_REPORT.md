@@ -14,22 +14,23 @@
 - Strengthened the opt-in PostgreSQL integration test to assert the Alembic head revision, seeker/employer role restrictions, cross-employer job/applicant authorization, and persisted job/application status across separate requests. This test was not run because the dedicated test URL is not configured.
 - Added CORS regression coverage proving the configured local frontend origin can preflight an Authorization request and an untrusted origin is rejected.
 - Documented safe creation and verification of a separate disposable PostgreSQL database. Production hosting instructions now list database, backend, frontend, CORS, migration, and URL verification steps; no deployment was performed.
+- Added API-base validation to fail fast on whitespace/control-label contamination and non-HTTP(S) values. Added a regression test proving Axios constructs the expected production jobs URL and rejects the observed copied-label suffix.
 
 ## Test results
 
 | Check | Result |
 |---|---:|
 | Backend pytest | 20 passed, 1 skipped |
-| Frontend Vitest | 27 passed |
+| Frontend Vitest | 29 passed |
 | Frontend auth request tests | 5 passed |
-| Combined executed test cases | 52 passed, 1 skipped |
+| Combined executed test cases | 54 passed, 1 skipped |
 | Frontend lint | Exit 0; no warnings |
 | Frontend production build | Passed |
 | Alembic upgrade on explicit in-memory SQLite | Passed |
 | PostgreSQL integration | Skipped; no dedicated test URL configured |
 | Playwright E2E | Not run; Playwright packages unavailable |
 
-Latest commands were run on 2026-10-17. The PostgreSQL test is **not** evidence of PostgreSQL connectivity, PostgreSQL migration success, or PostgreSQL persistence because its dedicated URL was absent and the test was skipped.
+The latest integration completion checks were run on 2026-10-17; the API base URL regression checks/build were run on 2026-10-18. The PostgreSQL test is **not** evidence of PostgreSQL connectivity, PostgreSQL migration success, or PostgreSQL persistence because its dedicated URL was absent and the test was skipped.
 
 ## Coverage
 
@@ -77,8 +78,15 @@ npm ls @playwright/test playwright --depth=0
 - `npm test`: 27 tests passed across 3 test files (including the final session-expiry and mutation-refresh changes).
 - `npm run test:auth`: 5 tests passed.
 - `npm run lint`: exit code 0 with no warnings.
-- `npm run build`: Vite production build passed.
+- `npm run build`: Vite production build passed. The API-base regression build set `VITE_API_BASE_URL` to the expected public production API base only in the current process; a bundle inspection confirmed that base was embedded and the copied UI label was absent.
 - Playwright dependency check returned an empty dependency tree; browser E2E was not run.
+
+API URL regression verification:
+
+- `npm test`: 29 tests passed across 3 test files, including the exact Axios URL `https://job-portal-web-application-4xeb.onrender.com/api/jobs?pageSize=100` and fail-fast handling of the observed clipboard-label suffix.
+- `npm run test:auth`: 5 passed.
+- `npm run lint`: passed without warnings.
+- Production build with the target `VITE_API_BASE_URL`: passed; generated JavaScript contained the target base and no `Copy variable and value` text.
 
 A source scan for common embedded credential patterns returned documentation and test references only; it did not print any credential values. `backend/.env` exists but was not opened, copied, or modified. The root `.gitignore` excludes `.env` files, Python environments/caches, `node_modules`, build outputs, local databases, and logs while allowing `.env.example` files. The workspace has no Git metadata, so `git check-ignore` and tracked-file verification could not be run.
 
@@ -93,8 +101,10 @@ A source scan for common embedded credential patterns returned documentation and
 ## Authentication, environment, and deployment review
 
 - JWTs are signed using `SECRET_KEY` loaded as a Pydantic `SecretStr`; the token subject resolves to the user on every request, and authorization derives role/ownership from the database. Password hashes use `pwdlib`'s recommended Argon2 hasher; response schemas omit hashes.
-- CORS uses an explicit allowlist from `CORS_ORIGINS`, with localhost defaults for local development. Production must set exact frontend origins and must not use wildcard origins.
+- CORS uses `CORSMiddleware` with an explicit comma-separated `CORS_ORIGINS` allowlist. Configuration and `.env.example` include `http://localhost:5173`, `http://127.0.0.1:5173`, and the exact production origin `https://job-portal-web-application-sigma.vercel.app`. OPTIONS preflight tests verify POST with `Content-Type` and `Authorization` headers for all three origins, and reject an unlisted origin. Render must be configured with the explicit list; no wildcard is allowed.
 - Frontend API origin is build-time `VITE_API_BASE_URL`; no backend credential belongs in the frontend environment.
+- The malformed production URL contains a clipboard UI label appended after `/api`. No source endpoint or request interceptor adds this text; the source passes the configured base URL through, and Axios percent-encodes embedded spaces as `%20`. The code now rejects whitespace and invalid URL schemes rather than sending a malformed request.
+- Local `.env` and process environment were checked without reading or printing values: no frontend `.env` file and no process `VITE_API_BASE_URL` were present. Vite config has no custom `envDir` or API rewrite. The target URL was injected explicitly for a production build and confirmed in the generated bundle. The live Vercel artifact could not be inspected from this environment, so the active deployment's build-time value remains unverified.
 - Root `.gitignore` covers env files and local generated data, but this cannot be verified against Git tracking because the workspace has no `.git` directory.
 - `.env` contents were not inspected and no real credential was printed.
 - Vercel/Netlify SPA rewrite files and provider-specific setup steps are documented. No provider configuration, production migration, or live deployment was executed.
@@ -106,6 +116,13 @@ A source scan for common embedded credential patterns returned documentation and
 - Browser storage uses `sessionStorage` for the tab session; production hardening should consider HttpOnly secure cookies or another XSS-resistant token strategy.
 - Email verification, password reset, token refresh/revocation, rate limiting, and audit logging are not implemented.
 - No Git repository/remote, GitHub URL, hosting account, deployed URL, evaluator account, or demo video exists in this workspace. Those deliverables require project-owner accounts and actions.
+- The deployed production issue is not confirmed fixed: the live Vercel deployment must be rebuilt with the corrected Production variable and its Network request checked after deployment.
+
+## Production CORS update (2026-10-18)
+
+- `python -m pytest -q` from `backend\`: **20 passed, 1 skipped**. The skip is the separately guarded PostgreSQL integration test; no database configuration was changed.
+- `npm run lint` from `frontend\`: passed with no warnings.
+- Live Render redeployment and browser verification remain pending.
 
 ## Rerun commands
 

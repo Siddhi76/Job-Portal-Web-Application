@@ -4,7 +4,10 @@ import os
 os.environ["DATABASE_URL"] = "sqlite+pysqlite:///:memory:"
 os.environ["SECRET_KEY"] = "qiro-test-only-key-not-for-any-deployment"
 os.environ["ACCESS_TOKEN_EXPIRE_MINUTES"] = "5"
-os.environ["CORS_ORIGINS"] = "http://localhost:5173"
+os.environ["CORS_ORIGINS"] = (
+    "http://localhost:5173,http://127.0.0.1:5173,"
+    "https://job-portal-web-application-sigma.vercel.app"
+)
 
 import pytest
 from fastapi.testclient import TestClient

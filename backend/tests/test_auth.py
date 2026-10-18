@@ -93,20 +93,30 @@ def test_me_rejects_expired_access_token(client: TestClient):
 
 
 def test_cors_allows_configured_frontend_and_rejects_other_origins(client: TestClient):
-    allowed = client.options(
-        "/api/jobs",
-        headers={
-            "Origin": "http://localhost:5173",
-            "Access-Control-Request-Method": "GET",
-            "Access-Control-Request-Headers": "authorization",
-        },
-    )
-    assert allowed.status_code == 200
-    assert allowed.headers["access-control-allow-origin"] == "http://localhost:5173"
-    assert "authorization" in allowed.headers["access-control-allow-headers"].lower()
+    settings = get_settings()
+    assert settings.cors_origin_list == [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "https://job-portal-web-application-sigma.vercel.app",
+    ]
+
+    for origin in settings.cors_origin_list:
+        allowed = client.options(
+            "/api/auth/register",
+            headers={
+                "Origin": origin,
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "content-type,authorization",
+            },
+        )
+        assert allowed.status_code == 200
+        assert allowed.headers["access-control-allow-origin"] == origin
+        allowed_headers = allowed.headers["access-control-allow-headers"].lower()
+        assert "authorization" in allowed_headers
+        assert "content-type" in allowed_headers
 
     rejected = client.options(
-        "/api/jobs",
+        "/api/auth/register",
         headers={
             "Origin": "https://untrusted.example",
             "Access-Control-Request-Method": "GET",

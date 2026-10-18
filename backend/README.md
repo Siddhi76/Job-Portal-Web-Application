@@ -50,7 +50,7 @@ Edit `backend/.env` and replace `DATABASE_URL` with the PostgreSQL URL for the d
 python -c "import secrets; print(secrets.token_urlsafe(48))"
 ```
 
-Set `SECRET_KEY` in `.env` to the generated value. Configure `ACCESS_TOKEN_EXPIRE_MINUTES` and comma-separated `CORS_ORIGINS` as needed. The example CORS values allow the local Vite frontend.
+Set `SECRET_KEY` in `.env` to the generated value. Configure `ACCESS_TOKEN_EXPIRE_MINUTES` and comma-separated `CORS_ORIGINS` as needed. The example CORS allowlist includes both local Vite origins and `https://job-portal-web-application-sigma.vercel.app`. For Render, set the same exact comma-separated value below and redeploy.
 
 Apply database migrations and start the API:
 
@@ -146,7 +146,7 @@ Registration/login responses contain `accessToken`, `tokenType`, and safe user i
 - **Authentication failed:** verify the database role/password, URL-encode reserved password characters, and make sure credentials have not been accidentally surrounded by quotes in `.env`.
 - **Database does not exist:** create the database first; `alembic upgrade head` creates tables, not the PostgreSQL database itself.
 - **Missing table / undefined column:** check `alembic current` and apply `alembic upgrade head` using the same `DATABASE_URL` as the API.
-- **CORS in the browser:** add the exact frontend origin (including scheme and port) to `CORS_ORIGINS`, then restart the API.
+- **CORS in the browser:** add the exact frontend origin (scheme + host, no trailing slash) to comma-separated `CORS_ORIGINS`, then redeploy/restart the API. Keep an explicit allowlist; do not use `*`.
 - **Generic 503 response:** the API intentionally hides database-driver details from clients. Review the local API process logs and validate the connection privately; do not share URLs containing passwords.
 
 ## Current integration status and remaining limitations

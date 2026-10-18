@@ -220,16 +220,18 @@ Deployment requires accounts and provider-side configuration and has not been pe
 
 1. Create a managed PostgreSQL database in the intended production region using your provider account.
 2. Create or select a dedicated application role with access only to the portal database. Configure the provider-issued connection string as backend `DATABASE_URL` in SQLAlchemy `postgresql+psycopg://...` form. Keep it in backend provider secrets, never frontend variables or source.
-3. Set a new randomly generated `SECRET_KEY`, `ACCESS_TOKEN_EXPIRE_MINUTES`, and `CORS_ORIGINS` in the backend provider. `CORS_ORIGINS` must be a comma-separated list of exact frontend origins (scheme + host, no path); do not use `*`.
+3. Set a new randomly generated `SECRET_KEY`, `ACCESS_TOKEN_EXPIRE_MINUTES`, and `CORS_ORIGINS` in the backend provider. `CORS_ORIGINS` must be a comma-separated list of exact frontend origins (scheme + host, no path or trailing slash); do not use `*`. For the current Vercel URL, include `https://job-portal-web-application-sigma.vercel.app` alongside any local origins needed.
 4. Back up the database, run `alembic upgrade head` using the production backend environment, and verify `/health`, `/docs`, registration, login, and persisted job/application workflows.
 
 ### Frontend (Vercel or Netlify)
 
 1. Import the repository and set the project/root directory to `frontend`.
 2. Use `npm run build` as the build command and `dist` as the output directory.
-3. Set build-time `VITE_API_BASE_URL` to `https://<your-api-host>/api`. This is public frontend configuration, not a secret.
-4. Deploy and verify direct page loads and refreshes for `/jobs` and both dashboard routes. The SPA rewrite configuration routes browser paths to `index.html`.
-5. Add the exact deployed frontend origin to backend `CORS_ORIGINS`, restart/redeploy the API, and verify browser API requests and preflight handling.
+3. Set `VITE_API_BASE_URL` in Vercel's environment-variable settings for the deployment environment you are testing (Production for the production alias). Enter only the URL, for example `https://<your-api-host>/api`—no quotes, copied control labels, or other text. This is public frontend configuration, not a secret.
+4. Save the variable and create a **new deployment**. Vite embeds `VITE_*` values at build time; changing a Vercel variable does not update an already-built deployment.
+5. Verify the active alias points at that new deployment. Hard-refresh with browser cache disabled, then inspect the jobs request: it should be `https://<your-api-host>/api/jobs?pageSize=100`. If extra text remains in the path, check the active deployment's environment (Production vs Preview), the actual deployment assigned to the alias, and any cached/older frontend asset.
+6. Verify direct page loads and refreshes for `/jobs` and both dashboard routes. The SPA rewrite configuration routes browser paths to `index.html`.
+7. Add the exact deployed frontend origin to backend `CORS_ORIGINS`, restart/redeploy the API, and verify browser API requests and preflight handling.
 
 ### Backend (Render or Railway)
 
