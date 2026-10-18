@@ -1,3 +1,4 @@
+
 # Qiro Tech Job Portal
 
 A responsive job portal for job seekers and employers, with a React/Vite frontend and a FastAPI backend backed by SQLAlchemy and PostgreSQL. The frontend uses the real API for job listings, job management, applications, application statuses, and profile updates; failed requests are surfaced instead of being turned into fake successful mutations.
@@ -66,8 +67,8 @@ alembic upgrade head
 uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-API liveness: `http://127.0.0.1:8000/health`  
-Swagger: `http://127.0.0.1:8000/docs`  
+API liveness: `http://127.0.0.1:8000/health`
+Swagger: `http://127.0.0.1:8000/docs`
 ReDoc: `http://127.0.0.1:8000/redoc`
 
 The health route is a liveness probe, not a database-readiness test.
@@ -109,23 +110,23 @@ Back up important databases before applying schema changes. Do not use downgrade
 
 Paths use the `/api` prefix unless noted. User data responses exclude password hashes.
 
-| Method | Endpoint | Access | Purpose |
-|---|---|---|---|
-| GET | `/health` | Public | Liveness |
-| POST | `/api/auth/register` | Public | Register job seeker or employer |
-| POST | `/api/auth/login` | Public | Obtain access token |
-| GET | `/api/auth/me` | Authenticated | Current safe profile |
-| PATCH | `/api/auth/me` | Authenticated | Update current user's name/email |
-| GET | `/api/jobs` | Public | Open jobs with search/filter/pagination |
-| GET | `/api/jobs/{job_id}` | Public | Open job detail |
-| GET | `/api/jobs/mine` | Employer | Current employer's jobs |
-| POST | `/api/jobs` | Employer | Create job |
-| PUT | `/api/jobs/{job_id}` | Owning employer | Update job |
-| DELETE | `/api/jobs/{job_id}` | Owning employer | Delete job |
-| POST | `/api/jobs/{job_id}/apply` | Job seeker | Submit application |
-| GET | `/api/applications/my` | Job seeker | Current seeker's applications |
-| GET | `/api/jobs/{job_id}/applications` | Owning employer | Applicants for owned job |
-| PATCH | `/api/applications/{application_id}/status` | Owning employer | Set Pending/Shortlisted/Rejected/Accepted |
+| Method | Endpoint                                      | Access          | Purpose                                   |
+| ------ | --------------------------------------------- | --------------- | ----------------------------------------- |
+| GET    | `/health`                                   | Public          | Liveness                                  |
+| POST   | `/api/auth/register`                        | Public          | Register job seeker or employer           |
+| POST   | `/api/auth/login`                           | Public          | Obtain access token                       |
+| GET    | `/api/auth/me`                              | Authenticated   | Current safe profile                      |
+| PATCH  | `/api/auth/me`                              | Authenticated   | Update current user's name/email          |
+| GET    | `/api/jobs`                                 | Public          | Open jobs with search/filter/pagination   |
+| GET    | `/api/jobs/{job_id}`                        | Public          | Open job detail                           |
+| GET    | `/api/jobs/mine`                            | Employer        | Current employer's jobs                   |
+| POST   | `/api/jobs`                                 | Employer        | Create job                                |
+| PUT    | `/api/jobs/{job_id}`                        | Owning employer | Update job                                |
+| DELETE | `/api/jobs/{job_id}`                        | Owning employer | Delete job                                |
+| POST   | `/api/jobs/{job_id}/apply`                  | Job seeker      | Submit application                        |
+| GET    | `/api/applications/my`                      | Job seeker      | Current seeker's applications             |
+| GET    | `/api/jobs/{job_id}/applications`           | Owning employer | Applicants for owned job                  |
+| PATCH  | `/api/applications/{application_id}/status` | Owning employer | Set Pending/Shortlisted/Rejected/Accepted |
 
 `GET /api/jobs` accepts `q` or `title`, `location`, `category`, `employmentType` (also `employment_type`), `page`, and `pageSize` (also `page_size`). Its response is `{ items, total, page, pageSize, pages }`. Job statuses are `open`, `closed`, and `draft`; only open jobs appear publicly. Registration roles are `job_seeker` and `employer`.
 
@@ -163,7 +164,6 @@ The integration test runs only when `POSTGRES_TEST_DATABASE_URL` is explicitly s
    ```text
    postgresql+psycopg://qiro_test:<URL_ENCODED_TEST_PASSWORD>@127.0.0.1:5432/qiro_portal_test
    ```
-
 3. In the same PowerShell window, enter the URL at a secure prompt and set it only in that process. This does not print or write the URL:
 
    ```powershell
@@ -176,7 +176,6 @@ The integration test runs only when `POSTGRES_TEST_DATABASE_URL` is explicitly s
        Remove-Variable secureUrl, urlPointer
    }
    ```
-
 4. Before running tests, print only the parsed backend and database name (never the URL or credentials):
 
    ```powershell
@@ -212,45 +211,48 @@ A skipped PostgreSQL test is not evidence of PostgreSQL connectivity or migratio
 
 The repository intentionally contains no default evaluator account or demo password. Create evaluation accounts through registration in the environment prepared for evaluation.
 
-## Deployment preparation (not deployed)
+## Live Deployment
 
-Deployment requires accounts and provider-side configuration and has not been performed or verified.
+The Qiro Tech Job Portal is deployed with a React/Vite frontend and a FastAPI backend.
 
-### Production PostgreSQL
+### Frontend
 
-1. Create a managed PostgreSQL database in the intended production region using your provider account.
-2. Create or select a dedicated application role with access only to the portal database. Configure the provider-issued connection string as backend `DATABASE_URL` in SQLAlchemy `postgresql+psycopg://...` form. Keep it in backend provider secrets, never frontend variables or source.
-3. Set a new randomly generated `SECRET_KEY`, `ACCESS_TOKEN_EXPIRE_MINUTES`, and `CORS_ORIGINS` in the backend provider. `CORS_ORIGINS` must be a comma-separated list of exact frontend origins (scheme + host, no path or trailing slash); do not use `*`. For the current Vercel URL, include `https://job-portal-web-application-sigma.vercel.app` alongside any local origins needed.
-4. Back up the database, run `alembic upgrade head` using the production backend environment, and verify `/health`, `/docs`, registration, login, and persisted job/application workflows.
+- **Live application:** https://job-portal-web-application-sigma.vercel.app/
+- **Hosting:** Vercel
+- **Technology:** React, Vite, Tailwind CSS
 
-### Frontend (Vercel or Netlify)
+### Backend API
 
-1. Import the repository and set the project/root directory to `frontend`.
-2. Use `npm run build` as the build command and `dist` as the output directory.
-3. Set `VITE_API_BASE_URL` in Vercel's environment-variable settings for the deployment environment you are testing (Production for the production alias). Enter only the URL, for example `https://<your-api-host>/api`—no quotes, copied control labels, or other text. This is public frontend configuration, not a secret.
-4. Save the variable and create a **new deployment**. Vite embeds `VITE_*` values at build time; changing a Vercel variable does not update an already-built deployment.
-5. Verify the active alias points at that new deployment. Hard-refresh with browser cache disabled, then inspect the jobs request: it should be `https://<your-api-host>/api/jobs?pageSize=100`. If extra text remains in the path, check the active deployment's environment (Production vs Preview), the actual deployment assigned to the alias, and any cached/older frontend asset.
-6. Verify direct page loads and refreshes for `/jobs` and both dashboard routes. The SPA rewrite configuration routes browser paths to `index.html`.
-7. Add the exact deployed frontend origin to backend `CORS_ORIGINS`, restart/redeploy the API, and verify browser API requests and preflight handling.
+- **API base URL:** https://job-portal-web-application-4xeb.onrender.com
+- **Health endpoint:** https://job-portal-web-application-4xeb.onrender.com/health
+- **Interactive API documentation:** https://job-portal-web-application-4xeb.onrender.com/docs
+- **Technology:** FastAPI, Python, SQLAlchemy, Alembic
 
-### Backend (Render or Railway)
+The health endpoint has been verified to return a successful status response, and the interactive API documentation is available.
 
-1. Create a Python 3.11+ web service using `backend` as its root directory.
-2. Install dependencies with `python -m pip install -r requirements.txt`. Set the start command to:
+### Environment Configuration
 
-  ```text
-  alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT
-  ```
+- The frontend uses `VITE_API_BASE_URL` to configure the backend API.
+- The backend uses environment variables for database connectivity, JWT configuration, and CORS settings.
+- Production secrets and database credentials must be configured through the hosting provider's environment-variable settings and must not be committed to the repository.
 
-3. Configure `DATABASE_URL`, `SECRET_KEY`, `ACCESS_TOKEN_EXPIRE_MINUTES`, and `CORS_ORIGINS` as provider-managed variables/secrets. Generate a new production secret; do not reuse local, test, or example values.
-4. Run migrations before serving traffic. Confirm provider logs do not echo environment values.
-5. Verify `https://<your-api-host>/health`, `/docs`, CORS, both account roles, and actual database persistence after refresh before publishing URLs.
+### Deployment Verification
 
-## Submission deliverables and limitations
+The frontend and backend have been deployed. The API health endpoint and interactive documentation have been checked. Full production database persistence and every end-to-end workflow should be considered verified only after their corresponding integration tests have passed against the deployed environment.
 
-- No Git repository/remote is configured in this workspace, so a repository URL cannot be provided or committed from here.
-- No frontend/backend has been deployed; live URLs must be supplied after provider account setup and verification.
-- Evaluator credentials should be created privately through the deployed registration flow; none are hardcoded.
-- A 5–10 minute demo video requires a recording and submission action from the project owner.
-- PostgreSQL integration is not considered verified unless the dedicated PostgreSQL integration test and migration run complete against a real disposable PostgreSQL database.
-- Email verification, password reset, refresh/revocation, rate limiting, protected resume storage, and audit history are outside the current implementation.
+## Submission Deliverables
+
+- **Candidate:** Siddhi Sanjay Patil
+- **GitHub repository:** https://github.com/Siddhi76/Job-Portal-Web-Application
+- **Live frontend:** https://job-portal-web-application-sigma.vercel.app/
+- **Live backend:** https://job-portal-web-application-4xeb.onrender.com
+- **API documentation:** https://job-portal-web-application-4xeb.onrender.com/docs
+- **Demo video:** To be added after recording and uploading the 5–10 minute project walkthrough.
+
+### Testing Status
+
+The frontend and backend automated test suites have been run. Refer to [`TEST_REPORT.md`](./TEST_REPORT.md) for the recorded results and limitations. PostgreSQL integration testing requires a dedicated disposable test database; skipped integration tests do not establish that production database workflows have been verified.
+
+### Current Limitations
+
+The implementation does not currently include email verification, password reset, token refresh/revocation, rate limiting, protected resume storage, or audit history. These features are outside the current implementation scope.
